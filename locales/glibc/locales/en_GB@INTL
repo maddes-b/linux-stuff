@@ -1,0 +1,173 @@
+comment_char %
+escape_char /
+
+% INTL English locale for GB
+% This is a modified copy of "en_GB"
+% Modifications done for internationally working people: ISO date, 24h clock, comma as decimal separator, A4 paper, metric system, etc.
+% Most settings are either directly copied from en_GB or from i18n
+% Special cases are explicitly mentioned
+
+% "en_GB" is part of the GNU C Library and contains locale data.
+% The Free Software Foundation does not claim any copyright interest
+% in the locale data contained in this file.  The foregoing does not
+% affect the license of the GNU C Library as a whole.  It does not
+% exempt you from the conditions of the license if your use would
+% otherwise be governed by that license.
+
+LC_IDENTIFICATION
+title      "INTL English locale for GB (based on en_GB)"
+source     "Maddes (based on the work of Free Software Foundation, Inc.)"
+address    "http:////www.github.com//maddes-b//linux-stuff//"
+contact    ""
+email      ""
+tel        ""
+fax        ""
+language   "British English"
+territory  "United Kingdom"
+revision   "1.0"
+date       "2024-03-12"
+
+category "i18n:2012";LC_IDENTIFICATION
+category "i18n:2012";LC_CTYPE
+category "i18n:2012";LC_COLLATE
+category "i18n:2012";LC_TIME
+category "i18n:2012";LC_NUMERIC
+category "i18n:2012";LC_MONETARY
+category "i18n:2012";LC_MESSAGES
+category "i18n:2012";LC_PAPER
+category "i18n:2012";LC_NAME
+category "i18n:2012";LC_ADDRESS
+category "i18n:2012";LC_TELEPHONE
+category "i18n:2012";LC_MEASUREMENT
+END LC_IDENTIFICATION
+
+
+LC_CTYPE
+copy "en_GB"
+END LC_CTYPE
+
+
+LC_COLLATE
+copy "en_GB"
+END LC_COLLATE
+
+
+LC_MONETARY
+% -- taken from en_GB
+int_curr_symbol         "GBP "
+currency_symbol         "£"
+mon_decimal_point       ","  % INTL: adapted
+mon_thousands_sep       "."  % INTL: adapted
+mon_grouping            3
+positive_sign           ""
+negative_sign           "-"
+int_frac_digits         2
+frac_digits             2
+p_cs_precedes           1
+p_sep_by_space          0
+n_cs_precedes           1
+n_sep_by_space          0
+p_sign_posn             1
+n_sign_posn             1
+END LC_MONETARY
+
+
+LC_NUMERIC
+% -- taken from en_GB
+decimal_point           ","  % INTL: adapted
+thousands_sep           "."  % INTL: adapted
+grouping                3
+END LC_NUMERIC
+
+
+LC_TIME
+% copy "en_US@INTL"
+% -- taken from en_US/en_GB
+abday "Sun";"Mon";"Tue";"Wed";"Thu";"Fri";"Sat"
+day /
+  "Sunday";/
+  "Monday";/
+  "Tuesday";/
+  "Wednesday";/
+  "Thursday";/
+  "Friday";/
+  "Saturday"
+abmon /
+  "Jan";"Feb";/
+  "Mar";"Apr";/
+  "May";"Jun";/
+  "Jul";"Aug";/
+  "Sep";"Oct";/
+  "Nov";"Dec"
+mon /
+  "January";/
+  "February";/
+  "March";/
+  "April";/
+  "May";/
+  "June";/
+  "July";/
+  "August";/
+  "September";/
+  "October";/
+  "November";/
+  "December"
+% Appropriate 12h clock time representation (%r)
+am_pm "AM";"PM"
+t_fmt_ampm "%I:%M:%S %p %Z"  % INTL: adapted
+% -- taken/adapted from i18n
+% This is the ISO/IEC 14652 "i18n" definition for
+% the LC_TIME category.
+%
+% Weekday and week numbering according to ISO 8601  % INTL: adapted
+% https://sourceware.org/glibc/wiki/Locales#LC_TIME
+% glibc <=2.36: needs to be based on Sunday
+week 7;19971130;4
+first_weekday 2
+first_workday 2
+% week 7;19971201;4
+% first_weekday 1
+% first_workday 1
+% Date formats following ISO 8601
+% Appropriate date and time representation (%c)
+d_t_fmt    "%F %T %Z"  % INTL: adapted
+%
+% Appropriate date representation (%x)
+d_fmt      "%F"
+%
+% Appropriate time representation (%X)
+t_fmt      "%T %Z"  % INTL: adapted
+%
+% Appropriate date representation (date(1))
+date_fmt   "%a %F %T %Z"  % INTL: adapted
+END LC_TIME
+
+
+LC_MESSAGES
+copy "en_GB"
+END LC_MESSAGES
+
+
+LC_PAPER
+copy "i18n"
+END LC_PAPER
+
+
+LC_NAME
+copy "en_GB"
+END LC_NAME
+
+
+LC_ADDRESS
+copy "en_GB"
+END LC_ADDRESS
+
+
+LC_TELEPHONE
+copy "en_GB"
+END LC_TELEPHONE
+
+
+LC_MEASUREMENT
+copy "i18n"
+END LC_MEASUREMENT
