@@ -1,0 +1,146 @@
+= Linux Stuff
+:toc:
+:toclevels: 3
+
+== Locales for International Work (ISO dates, 24h clock, etc.)
+Most people that work internationally prefer to use English, but also ISO dates, 24h clocks and more. Unfortunately there is no locale that provides all of these at once. +
+Under `locales` are some locales with modifier `@INTL` that provide these. They are based on the https://sourceware.org/git/?p=glibc.git;a=tree;f=localedata/locales;hb=HEAD[glibc definitions]. +
+glibc/XPG naming conversion for locales: https://www.gnu.org/software/libc/manual/html_node/Locale-Names.html[language[_territory\][.codeset\][@modifier\]]
+
+* de_DE.UTF-8@INTL
+* en_DE.UTF-8
+* en_DE.UTF-8@INTL
+* en_GB.UTF-8@INTL
+* en_US.UTF-8@INTL
+
+INTL definitions:
+
+* LC_TIME
+** ISO date format `YYYY-MM-DD`
+** 24h clock, but still supporting `%r` for `AM/PM` display
+** Display time zone
+** Week starts on Monday (like GB, sunday is part of the weekend)
+*** `glibc`: The https://sourceware.org/glibc/wiki/Locales#LC_TIME[glibc Wiki for LC_TIME] says that `week's WEEKSTARTDATE` can be based on Monday, but that does not work for `abday`/`day` yet (++<=++2.36). Follow the compatibility path mentioned on the Wiki, although ISO 8601 specifies Monday to be `1` and not `2` and glibc's `i18n` tries to achive this.
+* LC_NUMERIC, but also for LC_CURRENCY
+** decimal separator `,` (comma), thounsands separator `.` (dot)
+* LC_MEASUREMENT
+** metric systems
+* LC_PAPER
+** A4
+
+.A What to modify for @INTL and en_XX for non-english territories
+[%autowidth]
+|===
+|Type |i18n |en_US |en_GB |de_DE |@INTL |en_DE |en_DE@INTL
+
+|LC_CTYPE
+|i18n_ctype+translit_neutral
+|i18n+translit_combining
+|<- en_US
+|i18n+translit_combining+extra
+|copy origin
+|copy de_DE
+|copy de_DE
+
+|LC_COLLATE
+|extra+iso14651_t1
+|iso14651_t1
+|iso14651_t1
+|iso14651_t1
+|copy origin
+|copy de_DE
+|copy de_DE
+
+|LC_MONETARY
+|XDR
+|USD
+|GBP
+|EUR
+|*adapt/copy*
+|copy de_DE
+|copy de_DE
+
+|LC_NUMERIC
+|comma, none, -1
+|dot, comma, 3
+|dot, comma, 3
+|comma, dot, 3
+|*adapt/copy*
+|copy de_DE
+|copy de_DE
+
+|LC_TIME
+|No texts, ISO Date (imperfect)
+|mm/dd/yyyy, 12h
+|dd/mm/yyyy, 12h
+|dd.mm.yyyy, 24h
+|*adapt*
+|*adapt*
+|_copy en_US@INTL_
+
+|LC_MESSAGES
+|"^[+1]"/"^[-0]"
+|yes/no
+|<- en_US
+|ja/nein
+|copy origin
+|_copy en_US_
+|_copy en_US_
+
+|LC_PAPER
+|A4
+|Letter
+|i18n
+|i18n
+|_copy i18n_
+|copy de_DE
+|_copy i18n_
+
+|LC_NAME
+|No texts
+|Texts, %d%t%g%t%m%t%f
+|<- en_US
+|Texts, %d%t%g%t%m%t%f
+|copy origin
+|_copy en_US_
+|_copy en_US_
+
+|LC_ADDRESS
+|only postal_format
+|US+language
+|GB+language
+|DE+language
+|copy origin
+|copy de_DE
+|copy de_DE
+
+|LC_TELEPHONE
+|generic format
+|country code
+|country code
+|country code
+|copy origin
+|copy de_DE
+|copy de_DE
+
+|LC_MEASUREMENT
+|1
+|2
+|i18n
+|i18n
+|_copy i18n_
+|copy de_DE
+|_copy i18n_
+
+|===
+
+=== Additional Locales on Debian/Ubuntu
+* Standard library: `glibc`
+* Copy additional locales to `/usr/*local*/share/i18n/locales/`
+* Create list of additional locales with their charmap in file `/usr/*local*/share/i18n/SUPPORTED`, e.g. `en_US.UTF-8@INTL UTF-8`
+* Run `dpkg-reconfigure locales` and select all possible locales for the machine. (modifies `/etc/locale.gen` and `/etc/default/locale`)
+
+=== Additional Locales on Alpine
+* Standard library: `musl`
+* `musl` has only limited suppport for locales, and specifying locales is tedious.
+* Status: not relevant for my docker images
