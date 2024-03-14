@@ -139,6 +139,9 @@ INTL definitions:
 * Copy additional locales to `/usr/*local*/share/i18n/locales/`
 * Create list of additional locales with their charmap in file `/usr/*local*/share/i18n/SUPPORTED`, e.g. `en_US.UTF-8@INTL UTF-8`
 * Run `dpkg-reconfigure locales` and select all possible locales for the machine. (modifies `/etc/locale.gen` and `/etc/default/locale`)
+* Related bugs still available in Debian 12 "Bookworm" (as of 2024-03)
+** https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1066887[Locales Cannot Copy from Locales in /usr/local/share/i18n/locales]
+** https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=793368[Updating /etc/default/locale doesn't update debconf selections during dpkg-reconfigure]
 
 === Additional Locales on Alpine
 * Standard library: `musl`
