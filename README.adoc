@@ -2,29 +2,16 @@
 :toc:
 :toclevels: 3
 
-== https://github.com/acmesh-official/acme.sh[acme.sh] Scripts
+== https://github.com/acmesh-official/acme.sh[acme.sh] and https://github.com/joohoi/acme-dns[acme-dns] Scripts
 
-=== Convert LE Account Data from Certbot to acme.sh (and also https://github.com/joohoi/acme-dns[acme-dns])
+=== Convert LE Account Data from Certbot to acme.sh/acme-dns
 
-The script `convert-certbot-le-account-to-acme.sh` reads the Let's Encrypt data from certbot and converts it for https://github.com/acmesh-official/acme.sh[acme.sh].
+The script `convert-certbot-le-account-to-acme.sh` reads the Let's Encrypt account data from certbot and converts it for https://github.com/acmesh-official/acme.sh[acme.sh] and/or https://github.com/joohoi/acme-dns[acme-dns].
 The script itself is based on Python 3 and creates a Python virtual environment in its directory to avoid messing up the system's environment with the required Python packages.
 
-Usage: `+convert-certbot-le-account-to-acme.sh [-h] -i CERTBOT_ACCOUNT_DIR [-o ACME_SH_CA_DIR]+` +
-The script also works if either the input dir is not an actual cerbot account directory (`+/etc/letsencrypt/<server>/directory/<certbot id = md5 of public key>/+`) and/or the ouptut directory is not an acme.sh `ca` directory.
-Then It will just use the directories as-is and will not do extra checks on the input or create the output directory structure for acme.sh.
-
-The created files can also be used for `acme-dns` (more precisely anything using the go package https://github.com/caddyserver/certmagic[certmagic]) by copying/adapting them into the cache dir directory of acme-dns, e.g. `+/var/lib/acme-dns/api-certs/acme/<server>-directory/users/<email address>+`. +
-Some special chars of the email addresses are replaced by https://github.com/caddyserver/certmagic/blob/master/storage.go#L242[certmagic's Safe function.]. +
-Copy the private key `account.key` as `<first part of email address>.key`. +
-Create a json file named `<first part of email address>.json`:
-```
-{
-    "contact": [
-            "mailto:<mail address>"
-    ],
-    "location": "<link from ACCOUNT_URL of ca.conf>"
-}
-```
+Usage: `+convert-certbot-le-account-to-acme.sh [-h] -i CERTBOT_ACCOUNT_DIR [-o1 ACME_SH_CA_DIR] [-o2 ACME_DNS_ACME_DIR]+` +
+The script also works if either the input dir is not an actual cerbot account directory (`+/etc/letsencrypt/<server>/directory/<certbot id = md5 of public key>/+`) and/or the ouptut directory is not an acme.sh `ca` directory and/or the ouptut directory is not an acme-dns `acme` directory.
+Then it will just use the directories as-is and will not do extra checks on the input or create the output directory structure for acme.sh/acme-dns.
 
 
 == Locales for International Work (ISO dates, 24h clock, etc.)
@@ -48,7 +35,7 @@ INTL definitions:
 ** Week starts on Monday (like GB, sunday is part of the weekend)
 *** `glibc`: The https://sourceware.org/glibc/wiki/Locales#LC_TIME[glibc Wiki for LC_TIME] says that `week's WEEKSTARTDATE` can be based on Monday, but that does not work for `abday`/`day` yet (++<=++2.36). Follow the compatibility path mentioned on the Wiki, although ISO 8601 specifies Monday to be `1` and not `2` and glibc's `i18n` tries to achive this.
 * LC_NUMERIC, but also for LC_CURRENCY
-** decimal separator `,` (comma), thounsands separator `.` (dot)
+** decimal separator `,` (comma), thousands separator `.` (dot)
 * LC_MEASUREMENT
 ** metric systems
 * LC_PAPER

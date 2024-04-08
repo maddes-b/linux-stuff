@@ -1,7 +1,7 @@
 #!/bin/sh -eu
 # -*- coding: utf-8; tab-width: 4; indent-tabs-mode: nil; py-indent-offset: 4 -*-
 
-###  Convert Let's Encrypt account data from certbot to acme.sh
+###  Convert Let's Encrypt account data from certbot to acme.sh/acme-dns
 ###  Copyright (C) 2024  Matthias "Maddes" Bücher
 ###
 ###  This program is free software; you can redistribute it and/or modify
@@ -94,6 +94,11 @@ ACME_SH_ACCOUNT_FILE = "account.json" ## response (not read)
 ACME_SH_CA_CONF_FILE = "ca.conf"
 ACME_SH_CA_DIR = "ca"
 
+## Define acme-dns constants
+ACME_DNS_DATA = "acme-dns"
+ACME_DNS_ACME_DIR = "acme"
+ACME_DNS_USERS_DIR = "users"
+
 ## Define Let's encrypt constants
 LE_SERVER_PROD = "acme-v02.api.letsencrypt.org"
 LE_SERVER_STAGING = "acme-staging-v02.api.letsencrypt.org"
@@ -105,6 +110,9 @@ KEY_FILENAME = "key_filename"
 KEY_CONTENT = "key_content"
 ACCOUNT_URL = "account_url"
 SERVER_URL = "server_url"
+CONTACT = "contact"
+MAILTO = "mailto"
+EMAIL = "email"
 
 
 def update_server(server_string):
@@ -127,73 +135,94 @@ def createArgParser():
     ## argparse: https://docs.python.org/3/library/argparse.html
 
     ## Create description
-    description = "Convert Let's Encrypt account data from certbot to acme.sh\nCopyright (C) 2024  Matthias \"Maddes\" Bücher\nLicensed under GNU GPL v2\n"
+    description = "Convert Let's Encrypt account data from certbot to acme.sh/acme-dns\nCopyright (C) 2024  Matthias \"Maddes\" Bücher\nLicensed under GNU GPL v2\n"
 
     ## Build Arg Parser
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("-i", "--indir", metavar="CERTBOT_ACCOUNT_DIR", type=dir_path, required=True, help="Certbot account directory, e.g. /etc/letsencrypt/accounts/<server>/directory/<account>")
-    parser.add_argument("-o", "--outdir", metavar="ACME_SH_CA_DIR", type=dir_path, help="acme.sh CA directory, e.g. /root/.acme.sh/config/ca")
+    parser.add_argument("-o1", "--outdir1", metavar="ACME_SH_CA_DIR", type=dir_path, help="acme.sh CA directory, e.g. /root/.acme.sh/config/ca")
+    parser.add_argument("-o2", "--outdir2", metavar="ACME_DNS_ACME_DIR", type=dir_path, help="acme-dns ACME directory, e.g. /var/lib/acme-dns/api-certs/acme")
 
     return parser
 
 
 if __name__ == "__main__":
-    sys.argv[0] = os.environ["SCRIPT_PATH"] ## fix script name for argparse output
     ## Check parameters from command line
+    sys.argv[0] = os.environ["SCRIPT_PATH"] ## fix script name for argparse output
     Parser = createArgParser()
     Arguments = Parser.parse_args()
+
+    ## Initialize result
     Variables = {}
     Variables[CERTBOT_DATA] = {}
     Variables[ACME_SH_DATA] = {}
+    Variables[ACME_DNS_DATA] = {}
+
     ## Check and process input dir
     if Arguments.indir:
         Arguments.indir = os.path.normpath(Arguments.indir.strip())
     if Arguments.indir:
-        ## Check for private_key.json
+        ## Check input dir for private_key.json
         Variables[CERTBOT_DATA][KEY_FILENAME] = os.path.join(Arguments.indir, CERTBOT_PRIVATE_KEY_FILE)
-        Variables[CERTBOT_DATA][KEY_CONTENT] = None
         if not os.path.exists(Variables[CERTBOT_DATA][KEY_FILENAME]):
             print("ERROR: File does not exist {}".format(Variables[CERTBOT_DATA][KEY_FILENAME]))
         else:
             with open(Variables[CERTBOT_DATA][KEY_FILENAME]) as f:
                 Variables[CERTBOT_DATA][KEY_CONTENT] = json.load(f)
+            if KEY_CONTENT in Variables[CERTBOT_DATA] \
+            and not Variables[CERTBOT_DATA][KEY_CONTENT]:
+                print("ERROR: File is empty {}".format(Variables[CERTBOT_DATA][KEY_FILENAME]))
+                del Variables[CERTBOT_DATA][KEY_CONTENT]
 
-        ## Check for regr.json
+        ## Check input dir for regr.json
         Variables[CERTBOT_DATA]["reg_filename"] = os.path.join(Arguments.indir, CERTBOT_REGISTRATION_FILE)
-        Variables[CERTBOT_DATA][REG_CONTENT] = None
-        Variables[CERTBOT_DATA][ACCOUNT_URL] = None
-        Variables[CERTBOT_DATA][SERVER_URL] = None
         if not os.path.exists(Variables[CERTBOT_DATA]["reg_filename"]):
             print("ERROR: File does not exist {}".format(Variables[CERTBOT_DATA]["reg_filename"]))
         else:
             with open(Variables[CERTBOT_DATA]["reg_filename"]) as f:
                 Variables[CERTBOT_DATA][REG_CONTENT] = json.load(f)
-            if Variables[CERTBOT_DATA][REG_CONTENT] \
-            and Variables[CERTBOT_DATA][REG_CONTENT]["uri"]:
-                Path_Components = urllib.parse.urlsplit(Variables[CERTBOT_DATA][REG_CONTENT]["uri"])
-                Variables[CERTBOT_DATA][SERVER_URL] = Path_Components.netloc
-                Path_Components = Path_Components.path.split("/")
-                Variables[CERTBOT_DATA][ACCOUNT_URL] = Path_Components[-1]
-        #
-        if not Variables[CERTBOT_DATA][ACCOUNT_URL]:
+            if REG_CONTENT in Variables[CERTBOT_DATA] \
+            and not Variables[CERTBOT_DATA][REG_CONTENT]:
+                print("ERROR: File is empty {}".format(Variables[CERTBOT_DATA]["reg_filename"]))
+                del Variables[CERTBOT_DATA][REG_CONTENT]
+            else:
+                if "uri" in Variables[CERTBOT_DATA][REG_CONTENT] \
+                and Variables[CERTBOT_DATA][REG_CONTENT]["uri"]:
+                    Path_Components = urllib.parse.urlsplit(Variables[CERTBOT_DATA][REG_CONTENT]["uri"])
+                    if Path_Components.netloc:
+                        Variables[CERTBOT_DATA][SERVER_URL] = Path_Components.netloc
+                    if Path_Components.path:
+                        Path_Components = Path_Components.path.split("/")
+                        if Path_Components[-1]:
+                            Variables[CERTBOT_DATA][ACCOUNT_URL] = Path_Components[-1]
+                if "body" in Variables[CERTBOT_DATA][REG_CONTENT] \
+                and Variables[CERTBOT_DATA][REG_CONTENT]["body"] \
+                and CONTACT in Variables[CERTBOT_DATA][REG_CONTENT]["body"] \
+                and Variables[CERTBOT_DATA][REG_CONTENT]["body"][CONTACT]:
+                    Variables[CERTBOT_DATA][CONTACT] = Variables[CERTBOT_DATA][REG_CONTENT]["body"][CONTACT]
+
+        ## Check for mandatory input
+        if not KEY_CONTENT in Variables[CERTBOT_DATA] \
+        and not ACCOUNT_URL in Variables[CERTBOT_DATA] \
+        and not SERVER_URL in Variables[CERTBOT_DATA]:
+            sys.exit(2)
+
+        ## Process found input data
+        if not ACCOUNT_URL in Variables[CERTBOT_DATA]:
             print("ERROR: Could not determine Let's Encrypt account id, result will be incomplete.")
             Variables[CERTBOT_DATA][ACCOUNT_URL] = "<unknown LE id>"
         elif not Variables[CERTBOT_DATA][ACCOUNT_URL].isnumeric():
             print("ERROR: Let's Encrypt id '{}' is not numeric, result will be invalid.".format(Variables[CERTBOT_DATA][ACCOUNT_URL]))
             Variables[CERTBOT_DATA][ACCOUNT_URL] = "".join(("<invalid LE id ", Variables[CERTBOT_DATA][ACCOUNT_URL], ">"))
         ## Update servers
-        if not Variables[CERTBOT_DATA][SERVER_URL]:
+        if not SERVER_URL in Variables[CERTBOT_DATA]:
             print("ERROR: Could not determine Let's Encrypt server, result will be incomplete.")
         else:
             Variables[CERTBOT_DATA][SERVER_URL] = update_server(Variables[CERTBOT_DATA][SERVER_URL])
 
-        ## Check path components (server, account, etc.)
+        ## Check input dir path components (server, account, etc.)
         Path_Count = 0
         Path_Remaining = Arguments.indir
-        Variables[CERTBOT_DATA]["count_directory"] = None
-        Variables[CERTBOT_DATA]["count_accounts"] = None
-        Variables[CERTBOT_DATA]["account_dir"] = None
-        Variables[CERTBOT_DATA]["server_dir"] = None
         while Path_Remaining:
             Path_Components = os.path.split(Path_Remaining)
             if not Path_Components[1]:
@@ -217,31 +246,44 @@ if __name__ == "__main__":
                 break
             Path_Remaining=Path_Components[0]
         #
-        if not Variables[CERTBOT_DATA]["account_dir"] \
+        if not "account_dir" in Variables[CERTBOT_DATA] \
+        or not "server_dir" in Variables[CERTBOT_DATA] \
+        or not "count_directory" in Variables[CERTBOT_DATA] \
+        or not "count_accounts" in Variables[CERTBOT_DATA] \
+        or not Variables[CERTBOT_DATA]["account_dir"] \
         or not Variables[CERTBOT_DATA]["server_dir"] \
         or not Variables[CERTBOT_DATA]["count_directory"] \
         or not Variables[CERTBOT_DATA]["count_accounts"] \
         or Variables[CERTBOT_DATA]["count_directory"] != 2 \
         or Variables[CERTBOT_DATA]["count_accounts"] != 4:
             Variables[CERTBOT_DATA]["is_account_dir"] = False
-            Variables[CERTBOT_DATA]["account_dir"] = None
-            Variables[CERTBOT_DATA]["server_dir"] = None
             print("WARN: Path '{}' is not a certbot account directory.".format(Arguments.indir))
         else:
             Variables[CERTBOT_DATA]["is_account_dir"] = True
             ## Update servers
             Variables[CERTBOT_DATA]["server_dir"] = update_server(Variables[CERTBOT_DATA]["server_dir"])
-            if Variables[CERTBOT_DATA]["server_dir"] \
-            and Variables[CERTBOT_DATA][SERVER_URL] \
+            #
+            if SERVER_URL in Variables[CERTBOT_DATA] \
             and Variables[CERTBOT_DATA]["server_dir"] != Variables[CERTBOT_DATA][SERVER_URL]:
                 print("WARN: Path server component '{}' does not match url server '{}', please check final result.".format(Variables[CERTBOT_DATA]["server_dir"], Variables[CERTBOT_DATA][SERVER_URL]))
 
-        ## Copy data to acme.sh variables
-        if not Variables[CERTBOT_DATA][SERVER_URL]:
+        ## Process certbot data
+        if not SERVER_URL in Variables[CERTBOT_DATA]:
             Variables[CERTBOT_DATA][SERVER_URL] = "<unknown server>"
         #
-        Variables[ACME_SH_DATA][SERVER_URL] = Variables[CERTBOT_DATA][SERVER_URL]
-        Variables[ACME_SH_DATA][ACCOUNT_URL] = Variables[CERTBOT_DATA][ACCOUNT_URL]
+        if CONTACT in Variables[CERTBOT_DATA]:
+            for Contact in Variables[CERTBOT_DATA][CONTACT]:
+                if Contact:
+                    Contact = Contact.strip()
+                if Contact:
+                    Variables[CERTBOT_DATA][MAILTO] = Contact
+                    Path_Components = urllib.parse.urlsplit(Contact)
+                    Variables[CERTBOT_DATA][EMAIL] = Path_Components.path
+                    break
+
+        ## Copy data to acme.sh/acme-dns variables
+        Variables[ACME_SH_DATA][SERVER_URL] = Variables[ACME_DNS_DATA][SERVER_URL] = Variables[CERTBOT_DATA][SERVER_URL]
+        Variables[ACME_SH_DATA][ACCOUNT_URL] = Variables[ACME_DNS_DATA][ACCOUNT_URL] = Variables[CERTBOT_DATA][ACCOUNT_URL]
         #
         if Variables[ACME_SH_DATA][SERVER_URL] == LE_SERVER_PROD:
             Variables[ACME_SH_DATA]["server"] = "letsencrypt"
@@ -249,78 +291,121 @@ if __name__ == "__main__":
             Variables[ACME_SH_DATA]["server"] = "letsencrypt_test"
         else:
             Variables[ACME_SH_DATA]["server"] = "<unknown server>"
+        #
+        if MAILTO in Variables[CERTBOT_DATA]:
+            Variables[ACME_SH_DATA][MAILTO] = Variables[ACME_DNS_DATA][MAILTO] = Variables[CERTBOT_DATA][MAILTO]
+        if EMAIL in Variables[CERTBOT_DATA]:
+            Variables[ACME_SH_DATA][EMAIL] = Variables[ACME_DNS_DATA][EMAIL] = Variables[CERTBOT_DATA][EMAIL]
+            #
+            ## https://github.com/caddyserver/certmagic/blob/master/storage.go#L242
+            Variables[ACME_DNS_DATA]["user_dirname_safe"] = Variables[ACME_DNS_DATA][EMAIL].strip().lower() \
+              .replace(" ", "_") \
+              .replace("+", "_plus_") \
+              .replace("*", "wildcard_") \
+              .replace(":", "-") \
+              .replace("..", "")
+            Path_Components = Variables[ACME_DNS_DATA]["user_dirname_safe"].split("@")
+            Variables[ACME_DNS_DATA]["user_filename_safe"] = Path_Components[0]
+        else:
+            Variables[ACME_DNS_DATA]["user_dirname_safe"] = "default"
+            Variables[ACME_DNS_DATA]["user_filename_safe"] = "default"
 
-    ## Check and process output dir
-    if Arguments.outdir:
-        Arguments.outdir = os.path.normpath(Arguments.outdir.strip())
-    if Arguments.outdir:
+    ## Check output dir for acme.sh
+    if Arguments.outdir1:
+        Arguments.outdir1 = os.path.normpath(Arguments.outdir1.strip())
+    if Arguments.outdir1:
         ## Check last path component (ca)
-        Path_Components = os.path.split(Arguments.outdir)
+        Path_Components = os.path.split(Arguments.outdir1)
         if Path_Components[1] != ACME_SH_CA_DIR:
-            print("WARN: Path '{}' is not an acme.sh '{}' directory.".format(Arguments.outdir, ACME_SH_CA_DIR))
+            print("WARN: Path '{}' is not an acme.sh '{}' directory.".format(Arguments.outdir1, ACME_SH_CA_DIR))
             print("WARN: Using directory directly.")
             Variables[ACME_SH_DATA]["is_ca_dir"] = False
-            Variables[ACME_SH_DATA]["account_path"] = Arguments.outdir
+            Variables[ACME_SH_DATA]["account_path"] = Arguments.outdir1
         else:
             Variables[ACME_SH_DATA]["is_ca_dir"] = True
             ## Check directory
-            if Variables[ACME_SH_DATA][SERVER_URL]:
-                Variables[ACME_SH_DATA]["account_path"] = os.path.join(Arguments.outdir, Variables[ACME_SH_DATA][SERVER_URL], LE_DIRECTORY_DIR)
-            else:
-                Variables[ACME_SH_DATA]["account_path"] = os.path.join(Arguments.outdir, "unknown-server", LE_DIRECTORY_DIR)
+            Variables[ACME_SH_DATA]["account_path"] = os.path.join(Arguments.outdir1, Variables[ACME_SH_DATA][SERVER_URL], LE_DIRECTORY_DIR)
         ## Define file paths and related variables
         Variables[ACME_SH_DATA][KEY_FILENAME] = os.path.join(Variables[ACME_SH_DATA]["account_path"], ACME_SH_PRIVATE_KEY_FILE)
-        Variables[ACME_SH_DATA]["account_file"] = os.path.join(Variables[ACME_SH_DATA]["account_path"], ACME_SH_ACCOUNT_FILE)
-        Variables[ACME_SH_DATA]["ca_file"] = os.path.join(Variables[ACME_SH_DATA]["account_path"], ACME_SH_CA_CONF_FILE)
+        Variables[ACME_SH_DATA]["account_filename"] = os.path.join(Variables[ACME_SH_DATA]["account_path"], ACME_SH_ACCOUNT_FILE)
+        Variables[ACME_SH_DATA]["ca_filename"] = os.path.join(Variables[ACME_SH_DATA]["account_path"], ACME_SH_CA_CONF_FILE)
         ## Check for existing files
         if os.path.lexists(Variables[ACME_SH_DATA][KEY_FILENAME]):
             print("ERROR: File '{}' exists. Not overwritng files.".format(Variables[ACME_SH_DATA][KEY_FILENAME]))
-            Arguments.outdir = None
-        if os.path.lexists(Variables[ACME_SH_DATA]["account_file"]):
-            print("ERROR: File '{}' exists. Not overwritng files.".format(Variables[ACME_SH_DATA]["account_file"]))
-            Arguments.outdir = None
-        if os.path.lexists(Variables[ACME_SH_DATA]["ca_file"]):
-            print("ERROR: File '{}' exists. Not overwritng files.".format(Variables[ACME_SH_DATA]["ca_file"]))
-            Arguments.outdir = None
+            Arguments.outdir1 = None
+        if os.path.lexists(Variables[ACME_SH_DATA]["account_filename"]):
+            print("ERROR: File '{}' exists. Not overwritng files.".format(Variables[ACME_SH_DATA]["account_filename"]))
+            Arguments.outdir1 = None
+        if os.path.lexists(Variables[ACME_SH_DATA]["ca_filename"]):
+            print("ERROR: File '{}' exists. Not overwritng files.".format(Variables[ACME_SH_DATA]["ca_filename"]))
+            Arguments.outdir1 = None
     else:
         Variables[ACME_SH_DATA][KEY_FILENAME] = ACME_SH_PRIVATE_KEY_FILE
-        Variables[ACME_SH_DATA]["account_file"] = ACME_SH_ACCOUNT_FILE
-        Variables[ACME_SH_DATA]["ca_file"] = ACME_SH_CA_CONF_FILE
+        Variables[ACME_SH_DATA]["account_filename"] = ACME_SH_ACCOUNT_FILE
+        Variables[ACME_SH_DATA]["ca_filename"] = ACME_SH_CA_CONF_FILE
 
-    ## Create PEM version of private key
-    Variables[ACME_SH_DATA][KEY_CONTENT] = None
+    ## Check output dir for acme-dns
+    if Arguments.outdir2:
+        Arguments.outdir2 = os.path.normpath(Arguments.outdir2.strip())
+    if Arguments.outdir2:
+        ## Check last path component (ca)
+        Path_Components = os.path.split(Arguments.outdir2)
+        if Path_Components[1] != ACME_DNS_ACME_DIR:
+            print("WARN: Path '{}' is not an acme-dns '{}' directory.".format(Arguments.outdir2, ACME_DNS_ACME_DIR))
+            print("WARN: Using directory directly.")
+            Variables[ACME_DNS_DATA]["is_acme_dir"] = False
+            Variables[ACME_DNS_DATA]["account_path"] = Arguments.outdir2
+        else:
+            Variables[ACME_DNS_DATA]["is_acme_dir"] = True
+            ## Check directory
+            Variables[ACME_DNS_DATA]["account_path"] = os.path.join(Arguments.outdir2, "-".join((Variables[ACME_DNS_DATA][SERVER_URL], LE_DIRECTORY_DIR)), ACME_DNS_USERS_DIR, Variables[ACME_DNS_DATA]["user_dirname_safe"])
+        ## Define file paths and related variables
+        Variables[ACME_DNS_DATA][KEY_FILENAME] = os.path.join(Variables[ACME_DNS_DATA]["account_path"], "".join((Variables[ACME_DNS_DATA]["user_filename_safe"], ".key")))
+        Variables[ACME_DNS_DATA]["account_filename"] = os.path.join(Variables[ACME_DNS_DATA]["account_path"], "".join((Variables[ACME_DNS_DATA]["user_filename_safe"], ".json")))
+        ## Check for existing files
+        if os.path.lexists(Variables[ACME_DNS_DATA][KEY_FILENAME]):
+            print("ERROR: File '{}' exists. Not overwritng files.".format(Variables[ACME_DNS_DATA][KEY_FILENAME]))
+            Arguments.outdir2 = None
+        if os.path.lexists(Variables[ACME_DNS_DATA]["account_filename"]):
+            print("ERROR: File '{}' exists. Not overwritng files.".format(Variables[ACME_DNS_DATA]["account_filename"]))
+            Arguments.outdir2 = None
+    else:
+        Variables[ACME_DNS_DATA][KEY_FILENAME] = "".join((Variables[ACME_DNS_DATA]["user_filename_safe"], ".key"))
+        Variables[ACME_DNS_DATA]["account_filename"] = "".join((Variables[ACME_DNS_DATA]["user_filename_safe"], ".json"))
+
+
+    ## acme.sh & acme-dns: Create PEM version of private key
+    Variables[ACME_SH_DATA][KEY_CONTENT] = Variables[ACME_DNS_DATA][KEY_CONTENT] = None
     Variables[ACME_SH_DATA]["key_file_sha256"] = None
     if Variables[CERTBOT_DATA][KEY_CONTENT]:
         Key = josepy.JWK.json_loads(json.dumps(Variables[CERTBOT_DATA][KEY_CONTENT]))
         #
         Pem = Key.key.private_bytes(encoding=cryptography.hazmat.primitives.serialization.Encoding.PEM, format=cryptography.hazmat.primitives.serialization.PrivateFormat.TraditionalOpenSSL,encryption_algorithm=cryptography.hazmat.primitives.serialization.NoEncryption())
         #
-        Variables[ACME_SH_DATA][KEY_CONTENT] = Pem.decode('unicode_escape')
+        Variables[ACME_SH_DATA][KEY_CONTENT] = Variables[ACME_DNS_DATA][KEY_CONTENT] = Pem.decode('unicode_escape')
         #
         Digest = cryptography.hazmat.primitives.hashes.Hash(cryptography.hazmat.primitives.hashes.SHA256())
         Digest.update(Pem)
         Hash = Digest.finalize()
         Variables[ACME_SH_DATA]["key_file_sha256"] = base64.standard_b64encode(Hash).decode('unicode_escape')
 
-    ## Copy response data (not necessary but may be of interest)
+    ## acme.sh: Copy response data (not necessary but may be of interest)
     Variables[ACME_SH_DATA]["account_content"] = {}
-    if Variables[CERTBOT_DATA][REG_CONTENT] \
+    if REG_CONTENT in Variables[CERTBOT_DATA] \
+    and "body" in Variables[CERTBOT_DATA][REG_CONTENT] \
     and Variables[CERTBOT_DATA][REG_CONTENT]["body"]:
-        if Variables[CERTBOT_DATA][REG_CONTENT]["body"]["key"]:
+        if "key" in Variables[CERTBOT_DATA][REG_CONTENT]["body"] \
+        and Variables[CERTBOT_DATA][REG_CONTENT]["body"]["key"]:
             Variables[ACME_SH_DATA]["account_content"]["key"] = Variables[CERTBOT_DATA][REG_CONTENT]["body"]["key"]
-        if Variables[CERTBOT_DATA][REG_CONTENT]["body"]["contact"]:
-            Variables[ACME_SH_DATA]["account_content"]["contact"] = Variables[CERTBOT_DATA][REG_CONTENT]["body"]["contact"]
+    if CONTACT in Variables[CERTBOT_DATA]:
+        Variables[ACME_SH_DATA]["account_content"][CONTACT] = Variables[CERTBOT_DATA][CONTACT]
 
-    ## Copy CA configuration
+    ## acme.sh: Create CA configuration
     Variables[ACME_SH_DATA]["ca_content"] = ""
     ## a) e-mail if available
     Variables[ACME_SH_DATA]["ca_content"] += "CA_EMAIL='"
-    if Variables[CERTBOT_DATA][REG_CONTENT] \
-    and Variables[CERTBOT_DATA][REG_CONTENT]["body"] \
-    and Variables[CERTBOT_DATA][REG_CONTENT]["body"]["contact"] \
-    and Variables[CERTBOT_DATA][REG_CONTENT]["body"]["contact"][0]:
-        Path_Components = urllib.parse.urlsplit(Variables[CERTBOT_DATA][REG_CONTENT]["body"]["contact"][0])
-        Variables[ACME_SH_DATA]["ca_content"] += Path_Components.path
+    if EMAIL in Variables[ACME_SH_DATA]:
+        Variables[ACME_SH_DATA]["ca_content"] += Variables[ACME_SH_DATA][EMAIL]
     Variables[ACME_SH_DATA]["ca_content"] += "'\n"
     ## b) acccount url
     Variables[ACME_SH_DATA]["ca_content"] += "ACCOUNT_URL='"
@@ -332,10 +417,20 @@ if __name__ == "__main__":
     Variables[ACME_SH_DATA]["ca_content"] += Variables[ACME_SH_DATA]["key_file_sha256"]
     Variables[ACME_SH_DATA]["ca_content"] += "'\n"
 
+    ## acme-dns: Copy response and account data
+    Variables[ACME_DNS_DATA]["account_content"] = {}
+    Variables[ACME_DNS_DATA]["account_content"]["status"] = "valid"
+    if CONTACT in Variables[CERTBOT_DATA]:
+        Variables[ACME_DNS_DATA]["account_content"][CONTACT] = Variables[CERTBOT_DATA][CONTACT]
+    Variables[ACME_DNS_DATA]["account_content"]["termsOfServiceAgreed"] = True
+    Variables[ACME_DNS_DATA]["account_content"]["orders"] = ""
+    Path_Components = urllib.parse.SplitResult("https", Variables[ACME_SH_DATA][SERVER_URL], "/".join((LE_ACCOUNT_PATH, Variables[ACME_SH_DATA][ACCOUNT_URL])), "", "")
+    Variables[ACME_DNS_DATA]["account_content"]["location"] = urllib.parse.urlunsplit(Path_Components)
+
     print(json.dumps(Variables, indent=2))
 
-    ## Write files
-    if Arguments.outdir:
+    ## acme.sh: Write files
+    if Arguments.outdir1:
         if Variables[ACME_SH_DATA][KEY_FILENAME] \
         and Variables[ACME_SH_DATA][KEY_CONTENT]:
             print("INFO: Writing '{}'".format(Variables[ACME_SH_DATA][KEY_FILENAME]))
@@ -343,20 +438,35 @@ if __name__ == "__main__":
             with open(Variables[ACME_SH_DATA][KEY_FILENAME], "w") as f:
                 f.write(Variables[ACME_SH_DATA][KEY_CONTENT])
         #
-        if Variables[ACME_SH_DATA]["ca_file"]:
-            print("INFO: Writing '{}'".format(Variables[ACME_SH_DATA]["ca_file"]))
-            os.makedirs(os.path.dirname(Variables[ACME_SH_DATA]["ca_file"]), exist_ok=True)
-            with open(Variables[ACME_SH_DATA]["ca_file"], "w") as f:
+        if Variables[ACME_SH_DATA]["ca_filename"]:
+            print("INFO: Writing '{}'".format(Variables[ACME_SH_DATA]["ca_filename"]))
+            os.makedirs(os.path.dirname(Variables[ACME_SH_DATA]["ca_filename"]), exist_ok=True)
+            with open(Variables[ACME_SH_DATA]["ca_filename"], "w") as f:
                 f.write(Variables[ACME_SH_DATA]["ca_content"])
         #
-        if Variables[ACME_SH_DATA]["account_file"]:
-            print("INFO: Writing '{}'".format(Variables[ACME_SH_DATA]["account_file"]))
-            os.makedirs(os.path.dirname(Variables[ACME_SH_DATA]["account_file"]), exist_ok=True)
-            with open(Variables[ACME_SH_DATA]["account_file"], "w") as f:
+        if Variables[ACME_SH_DATA]["account_filename"]:
+            print("INFO: Writing '{}'".format(Variables[ACME_SH_DATA]["account_filename"]))
+            os.makedirs(os.path.dirname(Variables[ACME_SH_DATA]["account_filename"]), exist_ok=True)
+            with open(Variables[ACME_SH_DATA]["account_filename"], "w") as f:
                 json.dump(Variables[ACME_SH_DATA]["account_content"], f, indent=2)
 
         print("Check result, if fine and also no errors listed above, then try to update account with acme.sh.")
         print("command: acme.sh --update-account --server {} ; # optional -m <email>".format(Variables[ACME_SH_DATA]["server"]))
+
+    ## acme-dns: Write files
+    if Arguments.outdir2:
+        if Variables[ACME_DNS_DATA][KEY_FILENAME] \
+        and Variables[ACME_DNS_DATA][KEY_CONTENT]:
+            print("INFO: Writing '{}'".format(Variables[ACME_DNS_DATA][KEY_FILENAME]))
+            os.makedirs(os.path.dirname(Variables[ACME_DNS_DATA][KEY_FILENAME]), exist_ok=True)
+            with open(Variables[ACME_DNS_DATA][KEY_FILENAME], "w") as f:
+                f.write(Variables[ACME_DNS_DATA][KEY_CONTENT])
+        #
+        if Variables[ACME_DNS_DATA]["account_filename"]:
+            print("INFO: Writing '{}'".format(Variables[ACME_DNS_DATA]["account_filename"]))
+            os.makedirs(os.path.dirname(Variables[ACME_DNS_DATA]["account_filename"]), exist_ok=True)
+            with open(Variables[ACME_DNS_DATA]["account_filename"], "w") as f:
+                json.dump(Variables[ACME_DNS_DATA]["account_content"], f, indent=2)
 
     sys.exit(0)
 __EOF
