@@ -81,65 +81,7 @@ END LC_NUMERIC
 
 
 LC_TIME
-% copy "en_US@INTL"
-% -- taken from en_US/en_GB
-abday "Sun";"Mon";"Tue";"Wed";"Thu";"Fri";"Sat"
-day /
-  "Sunday";/
-  "Monday";/
-  "Tuesday";/
-  "Wednesday";/
-  "Thursday";/
-  "Friday";/
-  "Saturday"
-abmon /
-  "Jan";"Feb";/
-  "Mar";"Apr";/
-  "May";"Jun";/
-  "Jul";"Aug";/
-  "Sep";"Oct";/
-  "Nov";"Dec"
-mon /
-  "January";/
-  "February";/
-  "March";/
-  "April";/
-  "May";/
-  "June";/
-  "July";/
-  "August";/
-  "September";/
-  "October";/
-  "November";/
-  "December"
-% Appropriate 12h clock time representation (%r)
-am_pm "AM";"PM"
-t_fmt_ampm "%I:%M:%S %p %Z"  % INTL: adapted
-% -- taken/adapted from i18n
-% This is the ISO/IEC 14652 "i18n" definition for
-% the LC_TIME category.
-%
-% Weekday and week numbering according to ISO 8601  % INTL: adapted
-% https://sourceware.org/glibc/wiki/Locales#LC_TIME
-% glibc <=2.36: needs to be based on Sunday
-week 7;19971130;4
-first_weekday 2
-first_workday 2
-% week 7;19971201;4
-% first_weekday 1
-% first_workday 1
-% Date formats following ISO 8601
-% Appropriate date and time representation (%c)
-d_t_fmt    "%F %T %Z"  % INTL: adapted
-%
-% Appropriate date representation (%x)
-d_fmt      "%F"
-%
-% Appropriate time representation (%X)
-t_fmt      "%T %Z"  % INTL: adapted
-%
-% Appropriate date representation (date(1))
-date_fmt   "%a %F %T %Z"  % INTL: adapted
+copy "en_US@INTL"
 END LC_TIME
 
 
