@@ -16,30 +16,54 @@ Then it will just use the directories as-is and will not do extra checks on the 
 
 == Locales for International Work (ISO dates, 24h clock, etc.)
 
-Most people that work internationally prefer to use English, but also ISO dates, 24h clocks and more. Unfortunately there is no locale that provides all of these at once. +
-Under `locales` are some locales with modifier `@INTL` that provide these. They are based on the https://sourceware.org/git/?p=glibc.git;a=tree;f=localedata/locales;hb=HEAD[glibc definitions]. +
+Checked with: Debian 12 "bookworm", Ubuntu 22.04 LTS, Linux Mint 21.3
+
+Most people that work internationally prefer to use English, but also ISO dates, 24h clock and more. Unfortunately there is no locale that provides all of these at once. +
+In this repo under `locales/` are some locales with modifier `@INTL` that provide these. They are based on the https://sourceware.org/git/?p=glibc.git;a=tree;f=localedata/locales;hb=HEAD[glibc definitions]. +
 glibc/XPG naming conversion for locales: https://www.gnu.org/software/libc/manual/html_node/Locale-Names.html[language[_territory\][.codeset\][@modifier\]]
 
-* de_DE.UTF-8@INTL
-* en_DE.UTF-8
-* en_DE.UTF-8@INTL
-* en_GB.UTF-8@INTL
-* en_US.UTF-8@INTL
+* `de_DE.UTF-8@INTL`
+* `en_DE.UTF-8`
+* `en_DE.UTF-8@INTL`
+* `en_FR.UTF-8@INTL`
+* `en_GB.UTF-8@INTL`
+* `en_US.UTF-8@INTL`
 
-INTL definitions:
+Language related INTL definitions:
 
-* LC_TIME
+* `LC_TIME`
 ** ISO date format `YYYY-MM-DD`
 ** 24h clock, but still supporting `%r` for `AM/PM` display
 ** Display time zone
 ** Week starts on Monday (like GB, sunday is part of the weekend)
-*** `glibc`: The https://sourceware.org/glibc/wiki/Locales#LC_TIME[glibc Wiki for LC_TIME] says that `week's WEEKSTARTDATE` can be based on Monday, but that does not work for `abday`/`day` yet (++<=++2.36). Follow the compatibility path mentioned on the Wiki, although ISO 8601 specifies Monday to be `1` and not `2` and glibc's `i18n` tries to achive this.
-* LC_NUMERIC, but also for LC_CURRENCY
+*** `glibc`: The https://sourceware.org/glibc/wiki/Locales#LC_TIME[glibc Wiki for LC_TIME] says that `week's WEEKSTARTDATE` can be based on Monday, but that does not work for `abday`/`day` yet (++<=++2.36). Follow the compatibility path mentioned on the Wiki, although ISO 8601 specifies Monday to be `1` and not `2` and glibc's `i18n` tries to achieve this.
+** Note that there are no differences in writing of days and months between GB and US
+
+* `LC_MESSAGES`
+** copied from `en_US` or `en_GB`
+
+* `LC_NAME`
+** copied from `en_US` or `en_GB`
+
+Currency related INTL definitions:
+
+* `LC_MONETARY`
 ** decimal separator `,` (comma), thousands separator `.` (dot)
-* LC_MEASUREMENT
+
+Region related INTL definitions:
+
+* `LC_NUMERIC`
+** decimal separator `,` (comma), thousands separator `.` (dot)
+
+Other INTL definitions (not language related):
+
+* `LC_MEASUREMENT`
 ** metric systems
-* LC_PAPER
+** copied from `i18n`
+
+* `LC_PAPER`
 ** A4
+** copied from `i18n`
 
 .A What to modify for @INTL and en_XX for non-english territories
 [%autowidth]
@@ -147,13 +171,21 @@ INTL definitions:
 
 |===
 
-=== Additional Locales on Debian/Ubuntu
+=== Additional Locales on Debian/Ubuntu and Based on Distros
 * Standard library: `glibc`
 * Copy additional locales to `/usr/*local*/share/i18n/locales/`
-* Create list of additional locales with their charmap in file `/usr/*local*/share/i18n/SUPPORTED`, e.g. `en_US.UTF-8@INTL UTF-8`
-* Run `dpkg-reconfigure locales` and select all possible locales for the machine. (modifies `/etc/locale.gen` and `/etc/default/locale`)
+* Create list of additional locales with their charmap in file `/usr/*local*/share/i18n/SUPPORTED`.
+  It has the same file format as `/etc/locale.gen`, e.g. `en_US.UTF-8@INTL UTF-8`. +
+  All locales listed will be available in `dpkg-reconfigure locales` and can be selected for generation.
+* Enable referencing custom locales via "copy" by setting `export I18NPATH='/usr/local/share/i18n/'`.
+** It is recommended to do this for all users via `/etc/profile.d/00-i18npath.sh`. Log off and log in again, then check via `export`.
+* Ubuntu and based on Distros (e.g. Linux Mint) also provide the plug-in directory `/var/lib/locales/supported.d/` for `/etc/locale.gen`.
+   Files in there must have the same file format as `/etc/locale.gen` or `/usr/local/share/i18n/SUPPORTED`. +
+   All locales listed will be automatically selected for generation in `dpkg-reconfigure locales` and allow for non-interactive setup.
+* Run `dpkg-reconfigure locales` and select all wanted locales for the machine. (modifies `/etc/locale.gen` and `/etc/default/locale`)
+
 * Related bugs still available in Debian 12 "Bookworm" (as of 2024-03)
-** https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1066887[Locales Cannot Copy from Locales in /usr/local/share/i18n/locales]
+** https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1066887[Locales Cannot Copy from Locales in /usr/local/share/i18n/locales] (solved via `I18NPATH` export)
 ** https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=793368[Updating /etc/default/locale doesn't update debconf selections during dpkg-reconfigure]
 
 === Additional Locales on Alpine
