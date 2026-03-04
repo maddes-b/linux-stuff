@@ -48,7 +48,7 @@ fi
 PYTHON_MODULES='josepy cryptography'
 for PYTHON_MODULE in ${PYTHON_MODULES}
  do
-  RC=0 ; { pip show -q "${PYTHON_MODULE}" 2>/dev/null ; } || RC="${?}"
+  RC=0 ; { python -m pip show -q "${PYTHON_MODULE}" 2>/dev/null ; } || RC="${?}"
   if [ "${RC}" -ne 0 ]; then
     printf -- '%s\n' "Installing python module ${PYTHON_MODULE}."
     RC=0 ; python -m pip install "${PYTHON_MODULE}" || RC="${?}"
