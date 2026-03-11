@@ -26,7 +26,10 @@ SCRIPT_PATH="$(dirname "${0}")"
 ### Check for python module venv
 RC=0 ; { "python${PYTHON_VERSION}" -m venv -h >/dev/null ; } || RC="${?}"
 if [ "${RC}" -ne 0 ]; then
-  printf -- '%s\n' 'Python module "venv" missing. Either install via package manager or pip.'
+  printf -- '%s\n' \
+    'Python module "venv" missing.' \
+    "Either install via package manager, e.g. Debian/Ubuntu package \"python${PYTHON_VERSION}-venv\"" \
+    "or via pip (Debian/Ubuntu package \"python${PYTHON_VERSION}-pip\" or https://packaging.python.org/en/latest/tutorials/installing-packages/ )."
   return "${RC}" 2>/dev/null || exit "${RC}"
 fi
 
