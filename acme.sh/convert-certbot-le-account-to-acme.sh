@@ -59,7 +59,7 @@ for PYTHON_MODULE in ${PYTHON_MODULES}
   fi
 done
 
-SCRIPT_PATH="${0}" python - "${@}" << __EOF
+SCRIPT_PATH="${0}" python - "${@}" << '__EOF'
 # -*- coding: utf-8; tab-width: 4; indent-tabs-mode: nil; py-indent-offset: 4 -*-
 
 ## Python 2 future-compatible workarounds: (see: http://python-future.org/compatible_idioms.html)
